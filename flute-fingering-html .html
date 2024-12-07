@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>笛の運指表</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .title-input {
+            width: 100%;
+            padding: 8px;
+            font-size: 18px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .chart-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            height: 800px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 16px;
+            background: white;
+        }
+
+        .flute-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .flute-number {
+            width: 50px;
+            text-align: right;
+            padding-right: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .flute {
+            flex-grow: 1;
+        }
+
+        .controls {
+            margin-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .save-button {
+            padding: 8px 16px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .save-button:hover {
+            background: #1d4ed8;
+        }
+
+        .help-text {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <input type="text" class="title-input" placeholder="曲の題名を入力してください" id="titleInput">
+    <div id="titleDisplay" class="chart-title"></div>
+    <div class="chart-container" id="chartContainer"></div>
+    <div class="controls">
+        <div class="help-text">穴をクリックすると色が切り替わります</div>
+        <button class="save-button" onclick="saveAsImage()">運指表を保存</button>
+    </div>
+
+    <script>
+        let fluteCount = 100;
+        let holes = Array(fluteCount).fill().map(() => Array(8).fill(false));
+
+        function createFluteSVG(index) {
+            const row = document.createElement('div');
+            row.className = 'flute-row';
+
+            const number = document.createElement('div');
+            number.className = 'flute-number';
+            number.textContent = (index + 1).toString().padStart(3, '0');
+
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("viewBox", "0 0 800 60");
+            svg.setAttribute("width", "100%");
+            svg.setAttribute("height", "32");
+            svg.classList.add('flute');
+
+            // 笛の本体
+            const body = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            body.setAttribute("x", "50");
+            body.setAttribute("y", "10");
+            body.setAttribute("width", "700");
+            body.setAttribute("height", "40");
+            body.setAttribute("fill", "white");
+            body.setAttribute("stroke", "black");
+            body.setAttribute("stroke-width", "2");
+
+            svg.appendChild(body);
+
+            // 区切り線
+            const dividerPositions = [[150, 170], [450, 470]];
+            dividerPositions.forEach(([x1, x2]) => {
+                [x1, x2].forEach(x => {
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", x);
+                    line.setAttribute("y1", "10");
+                    line.setAttribute("x2", x);
+                    line.setAttribute("y2", "50");
+                    line.setAttribute("stroke", "blue");
+                    line.setAttribute("stroke-width", "2");
+                    svg.appendChild(line);
+                });
+            });
+
+            // 穴
+            const holePositions = [100, 300, 350, 400, 550, 600, 650, 700];
+            holePositions.forEach((x, holeIndex) => {
+                const hole = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                hole.setAttribute("cx", x);
+                hole.setAttribute("cy", "30");
+                hole.setAttribute("r", "12");
+                hole.setAttribute("fill", holes[index][holeIndex] ? "red" : "white");
+                hole.setAttribute("stroke", "black");
+                hole.setAttribute("stroke-width", "2");
+                hole.style.cursor = "pointer";
+                hole.onclick = () => toggleHole(index, holeIndex);
+                svg.appendChild(hole);
+            });
+
+            row.appendChild(number);
+            row.appendChild(svg);
+            return row;
+        }
+
+        function toggleHole(fluteIndex, holeIndex) {
+            holes[fluteIndex][holeIndex] = !holes[fluteIndex][holeIndex];
+            renderChart();
+
+            if (fluteIndex === fluteCount - 1) {
+                fluteCount++;
+                holes.push(Array(8).fill(false));
+                renderChart();
+            }
+        }
+
+        function renderChart() {
+            const container = document.getElementById('chartContainer');
+            container.innerHTML = '';
+            for (let i = 0; i < fluteCount; i++) {
+                container.appendChild(createFluteSVG(i));
+            }
+        }
+
+        function saveAsImage() {
+            // 表示されている部分全体をSVGとして取得
+            const title = document.getElementById('titleInput').value;
+            const svgContainer = document.createElement('div');
+            svgContainer.style.background = 'white';
+            svgContainer.style.padding = '20px';
+            
+            // タイトルを追加
+            const titleElement = document.createElement('h2');
+            titleElement.style.textAlign = 'center';
+            titleElement.style.margin = '0 0 20px 0';
+            titleElement.textContent = title;
+            svgContainer.appendChild(titleElement);
+
+            // 全ての笛を追加
+            for (let i = 0; i < fluteCount; i++) {
+                svgContainer.appendChild(createFluteSVG(i).cloneNode(true));
+            }
+
+            // SVGをデータURLに変換
+            const svgData = new XMLSerializer().serializeToString(svgContainer);
+            const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+
+            // ダウンロードリンクを作成
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${title || 'flute-chart'}.svg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // タイトル入力の処理
+        document.getElementById('titleInput').addEventListener('input', (e) => {
+            const titleDisplay = document.getElementById('titleDisplay');
+            titleDisplay.textContent = e.target.value;
+        });
+
+        // 初期描画
+        renderChart();
+    </script>
+</body>
+</html>
